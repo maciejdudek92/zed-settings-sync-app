@@ -1,4 +1,4 @@
-package com.example.zed_settings_sync_app
+package com.maciejdudek.zedsettingssync
 
 import io.flutter.embedding.android.FlutterActivity
 

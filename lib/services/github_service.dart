@@ -15,6 +15,8 @@ class GithubService {
   Repository? _repository;
   String? _repositoryPath;
 
+  get isAthenticated => _github?.auth != null;
+
   String get repositoryPath => _repositoryPath!;
 
   Future<void> initialize() async {
@@ -34,8 +36,8 @@ class GithubService {
       _repository = await _repositoriesService!.getRepository(
         RepositorySlug(_githubUser!.login!, "zed-settings-sync"),
       );
+      await pull();
     } catch (e) {
-      print(e);
       if (e.runtimeType == RepositoryNotFound) {
         _repository = await _repositoriesService!.createRepository(
           CreateRepository("zed-settings-sync", private: true),
@@ -44,27 +46,36 @@ class GithubService {
     }
     _repositoryPath = _settings.settingJsonPath.replaceAll("settings.json", "");
 
+    if (Directory(p.join(_repositoryPath!, '.git')).existsSync()) {
+      push();
+    } else {
+      _init();
+    }
+  }
+
+  Future<void> _init() async {
     String initCommand =
         'cd $_repositoryPath && git init && git add . && git commit -m "first commit" && git branch -M main && git remote add origin ${_repository!.cloneUrl} && git push -u origin main';
     if (Platform.isWindows) {
       initCommand = initCommand.replaceAll("&&", ";");
     }
-
-    if (Directory(p.join(_repositoryPath!, '.git')).existsSync()) {
-      sync();
-    } else {
-      await ShellExecutor.executeCommands([initCommand]);
-    }
+    await ShellExecutor.executeCommands([initCommand]);
   }
 
-  Future<void> sync() async {
+  Future<void> push() async {
     String addComminAndPushCommand =
         'cd $_repositoryPath && git add . && git commit -m "update" && git push';
-
     if (Platform.isWindows) {
       addComminAndPushCommand = addComminAndPushCommand.replaceAll("&&", ";");
     }
-
     await ShellExecutor.executeCommands([addComminAndPushCommand]);
+  }
+
+  Future<void> pull() async {
+    String pullCommand = 'cd $_repositoryPath && git pull';
+    if (Platform.isWindows) {
+      pullCommand = pullCommand.replaceAll("&&", ";");
+    }
+    await ShellExecutor.executeCommands([pullCommand]);
   }
 }

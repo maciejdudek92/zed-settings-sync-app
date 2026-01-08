@@ -3,9 +3,10 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:forui/forui.dart';
 import 'package:get_it/get_it.dart';
+import 'package:launch_at_startup/launch_at_startup.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:zed_settings_sync_app/services/database_service.dart';
@@ -15,7 +16,7 @@ import 'package:zed_settings_sync_app/services/watcher_service.dart';
 
 final locator = GetIt.instance;
 WindowOptions windowOptions = WindowOptions(
-  size: Size(400, 400),
+  size: Size(450, 400),
   center: true,
   backgroundColor: Colors.transparent,
   skipTaskbar: false,
@@ -65,11 +66,20 @@ void main() async {
       ),
       MenuItem.separator(),
       MenuItem(key: 'settings', label: 'Settings'),
-      MenuItem(key: 'exit_app', label: 'Exit App'),
+      MenuItem(key: 'force_push', label: 'Force push'),
+      MenuItem(key: 'force_pull', label: 'Force pull'),
+      MenuItem(key: 'exit', label: 'Exit'),
     ],
   );
   await trayManager.setContextMenu(menu);
+  PackageInfo packageInfo = await PackageInfo.fromPlatform();
+  launchAtStartup.setup(
+    appName: packageInfo.appName,
+    appPath: Platform.resolvedExecutable,
+    packageName: 'com.maciejdudek.zedsettingssync',
+  );
 
+  windowManager.hide();
   runApp(const MyApp());
 }
 
@@ -101,15 +111,33 @@ class _MyHomePageState extends State<MyHomePage>
   final _githubAccessTokenController = TextEditingController();
   final _settingsJsonPathController = TextEditingController();
   late StreamSubscription _watcherSubscription;
+  bool isRunAtStartuEnable = false;
+
   @override
   void initState() {
     trayManager.addListener(this);
     windowManager.addListener(this);
+    if (ServicesWrapper.isInitialized) {
+      windowManager.hide();
+    } else {
+      windowManager.waitUntilReadyToShow(windowOptions, () async {
+        await windowManager.setResizable(false);
+        await windowManager.show();
+        await windowManager.focus();
+        await windowManager.setPreventClose(true);
+      });
+    }
+
     _watcherSubscription = locator<WatcherService>().watcher.events.listen((
       event,
     ) {
       print(event);
-      locator<GithubService>().sync();
+      locator<GithubService>().push();
+    });
+    launchAtStartup.isEnabled().then((value) {
+      setState(() {
+        isRunAtStartuEnable = value;
+      });
     });
     super.initState();
   }
@@ -151,23 +179,17 @@ class _MyHomePageState extends State<MyHomePage>
         await windowManager.focus();
         await windowManager.setPreventClose(true);
       });
-    } else if (menuItem.key == 'exit_app') {
+    } else if (menuItem.key == 'force_push') {
+      locator<GithubService>().push();
+    } else if (menuItem.key == 'force_pull') {
+      locator<GithubService>().pull();
+    } else if (menuItem.key == 'exit') {
       exit(0);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (ServicesWrapper.isInitialized) {
-      windowManager.hide();
-    } else {
-      windowManager.waitUntilReadyToShow(windowOptions, () async {
-        await windowManager.setResizable(false);
-        await windowManager.show();
-        await windowManager.focus();
-        await windowManager.setPreventClose(true);
-      });
-    }
     _settingsJsonPathController.text = locator<DatabaseService>()
         .getSettings()
         .settingJsonPath;
@@ -175,12 +197,23 @@ class _MyHomePageState extends State<MyHomePage>
         locator<DatabaseService>().getSettings().githubToken ?? "";
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: Colors.transparent,
 
-        title: Text(widget.title),
+        title: Row(
+          children: [
+            Text(widget.title),
+            Spacer(),
+            FButton.icon(
+              child: const Icon(FIcons.x),
+              onPress: () {
+                windowManager.hide();
+              },
+            ),
+          ],
+        ),
       ),
       body: Padding(
-        padding: EdgeInsetsGeometry.all(50),
+        padding: EdgeInsetsGeometry.fromLTRB(50, 20, 50, 50),
         child: Column(
           mainAxisAlignment: .center,
           children: [
@@ -219,16 +252,27 @@ class _MyHomePageState extends State<MyHomePage>
                 _settingsJsonPathController.text = result?.files[0].path ?? '';
               },
             ),
+            SizedBox(height: 16),
+            FCheckbox(
+              label: const Text('Run at statrup'),
+              value: isRunAtStartuEnable,
+              onChange: (value) async {
+                setState(() {
+                  isRunAtStartuEnable = value;
+                });
+              },
+              enabled: true,
+              autofocus: true,
+            ),
             SizedBox(height: 24),
             Row(
               children: [
                 FButton(
-                  child: const Text('Save'),
                   style: FButtonStyle.primary(),
                   prefix: const Icon(FIcons.save),
 
                   mainAxisSize: MainAxisSize.max,
-                  onPress: () {
+                  onPress: () async {
                     setState(() {
                       final settings = locator<DatabaseService>().getSettings();
                       settings.settingJsonPath =
@@ -237,22 +281,33 @@ class _MyHomePageState extends State<MyHomePage>
                           _githubAccessTokenController.value.text;
                       locator<DatabaseService>().update();
                     });
+                    if (isRunAtStartuEnable) {
+                      await launchAtStartup.enable();
+                    } else {
+                      await launchAtStartup.disable();
+                    }
                   },
+                  child: const Text('Save'),
                 ),
-                SizedBox(width: 10),
+                Spacer(),
                 FButton(
-                  child: const Text('Authenticate'),
                   style: FButtonStyle.primary(),
                   prefix: const Icon(FIcons.github),
 
                   mainAxisSize: MainAxisSize.max,
                   onPress:
-                      locator<DatabaseService>().getSettings().githubToken ==
-                          null
+                      locator<DatabaseService>().getSettings().githubToken !=
+                              null ||
+                          locator<GithubService>().isAthenticated
                       ? null
                       : () {
                           locator<GithubService>().authenticate();
                         },
+                  child: Text(
+                    locator<GithubService>().isAthenticated
+                        ? 'Authenticated'
+                        : 'Authenticate',
+                  ),
                 ),
               ],
             ),
