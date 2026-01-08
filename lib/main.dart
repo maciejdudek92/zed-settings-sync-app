@@ -79,7 +79,6 @@ void main() async {
     packageName: 'com.maciejdudek.zedsettingssync',
   );
 
-  windowManager.hide();
   runApp(const MyApp());
 }
 
