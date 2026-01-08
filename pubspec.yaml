@@ -43,10 +43,14 @@ dependencies:
   path_provider: ^2.1.5
   forui: ^0.17.0
   file_picker: ^10.3.8
+  build_runner: ^2.10.4
+  objectbox_flutter_libs: any
+  flutter_shell: ^0.0.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  objectbox_generator: any
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -68,6 +72,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/icons/tray_icon.png
+    - assets/icons/tray_icon.ico
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
