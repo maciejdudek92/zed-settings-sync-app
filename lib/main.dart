@@ -16,7 +16,7 @@ import 'package:zed_settings_sync_app/services/watcher_service.dart';
 
 final locator = GetIt.instance;
 WindowOptions windowOptions = WindowOptions(
-  size: Size(450, 400),
+  size: Size(400, 450),
   center: true,
   backgroundColor: Colors.transparent,
   skipTaskbar: false,
@@ -109,7 +109,7 @@ class _MyHomePageState extends State<MyHomePage>
     with TrayListener, WindowListener {
   final _githubAccessTokenController = TextEditingController();
   final _settingsJsonPathController = TextEditingController();
-  late StreamSubscription _watcherSubscription;
+  late StreamSubscription<FileSystemEvent> _watcherStream;
   bool isRunAtStartuEnable = false;
 
   @override
@@ -127,17 +127,18 @@ class _MyHomePageState extends State<MyHomePage>
       });
     }
 
-    _watcherSubscription = locator<WatcherService>().watcher.events.listen((
-      event,
-    ) {
-      print(event);
-      locator<GithubService>().push();
-    });
     launchAtStartup.isEnabled().then((value) {
       setState(() {
         isRunAtStartuEnable = value;
       });
     });
+
+    if (locator<WatcherService>().isInitialized) {
+      _watcherStream = locator<WatcherService>().watcher.listen((event) {
+        print(event);
+      });
+    }
+
     super.initState();
   }
 
@@ -145,7 +146,7 @@ class _MyHomePageState extends State<MyHomePage>
   void dispose() {
     trayManager.removeListener(this);
     windowManager.removeListener(this);
-    _watcherSubscription.cancel();
+    _watcherStream.cancel();
     super.dispose();
   }
 
@@ -309,6 +310,29 @@ class _MyHomePageState extends State<MyHomePage>
                   ),
                 ),
               ],
+            ),
+            SizedBox(height: 16),
+            FButton(
+              style: FButtonStyle.primary(),
+              prefix: Icon(
+                locator<WatcherService>().isInitialized
+                    ? FIcons.play
+                    : FIcons.pause,
+              ),
+
+              mainAxisSize: MainAxisSize.max,
+              onPress: locator<WatcherService>().isInitialized
+                  ? null
+                  : () async {
+                      setState(() {
+                        locator<WatcherService>().initialize();
+                        _watcherStream = _watcherStream =
+                            locator<WatcherService>().watcher.listen((event) {
+                              print(event);
+                            });
+                      });
+                    },
+              child: const Text('Start watcher'),
             ),
           ],
         ),
