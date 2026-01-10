@@ -77,7 +77,10 @@ void main() async {
     appPath: Platform.resolvedExecutable,
     packageName: 'com.maciejdudek.zedsettingssync',
   );
-
+  await windowManager.waitUntilReadyToShow(windowOptions, () async {
+    await windowManager.hide();
+    await windowManager.setPreventClose(true);
+  });
   runApp(const MyApp());
 }
 
@@ -115,9 +118,7 @@ class _MyHomePageState extends State<MyHomePage>
   void initState() {
     trayManager.addListener(this);
     windowManager.addListener(this);
-    if (ServicesWrapper.isInitialized) {
-      windowManager.hide();
-    } else {
+    if (!ServicesWrapper.isInitialized) {
       windowManager.waitUntilReadyToShow(windowOptions, () async {
         await windowManager.setResizable(false);
         await windowManager.show();
