@@ -21,7 +21,6 @@ class WatcherService {
     final isFolderExist = await Directory(
       locator<GithubService>().repositoryPath,
     ).exists();
-    print(isFolderExist);
     if (isFolderExist) {
       watcher = Directory(_settings.settingFolderPath).watch();
       _isInitialized = true;
@@ -29,14 +28,16 @@ class WatcherService {
     }
   }
 
-  void _sync(FileSystemEvent event) {
-    locator<GithubService>().push();
+  void _handleEvent(FileSystemEvent event) async {
+    if (!event.path.contains(".git")) {
+      await locator<GithubService>().push();
+    }
   }
 
   void start() {
     if (_subscription != null) return;
     _subscription = watcher.listen(
-      _sync,
+      _handleEvent,
       onError: (error) => print(error),
       onDone: () => stop(),
     );

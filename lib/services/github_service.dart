@@ -68,6 +68,7 @@ class GithubService {
     if (Platform.isWindows) {
       addComminAndPushCommand = addComminAndPushCommand.replaceAll("&&", ";");
     }
+
     await ShellExecutor.executeCommands([addComminAndPushCommand]);
   }
 

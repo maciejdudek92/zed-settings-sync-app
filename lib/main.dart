@@ -111,7 +111,6 @@ class _MyHomePageState extends State<MyHomePage>
     with TrayListener, WindowListener {
   final _githubAccessTokenController = TextEditingController();
   final _settingsJsonPathController = TextEditingController();
-  late StreamSubscription<FileSystemEvent> _watcherStream;
   bool isRunAtStartuEnable = false;
 
   @override
@@ -140,7 +139,8 @@ class _MyHomePageState extends State<MyHomePage>
   void dispose() {
     trayManager.removeListener(this);
     windowManager.removeListener(this);
-    _watcherStream.cancel();
+    locator<WatcherService>().stop();
+
     super.dispose();
   }
 
@@ -330,16 +330,18 @@ class _MyHomePageState extends State<MyHomePage>
               ),
 
               mainAxisSize: MainAxisSize.max,
-              onPress: () async {
-                setState(() {
-                  final watcher = locator<WatcherService>();
-                  if (watcher.isInitialized) {
-                    watcher.stop();
-                  } else {
-                    watcher.start();
-                  }
-                });
-              },
+              onPress: locator<GithubService>().isAthenticated
+                  ? () async {
+                      setState(() {
+                        final watcher = locator<WatcherService>();
+                        if (watcher.isInitialized) {
+                          watcher.stop();
+                        } else {
+                          watcher.start();
+                        }
+                      });
+                    }
+                  : null,
               child: Text(
                 locator<WatcherService>().isInitialized
                     ? 'Stop watcher'
