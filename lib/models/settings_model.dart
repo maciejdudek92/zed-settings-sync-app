@@ -10,23 +10,21 @@ class SettingsModel {
   int id = 1;
   String? githubToken;
   late String settingJsonPath;
+  late String settingFolderPath;
   DateTime? lastSync;
   String? repositoryId;
 
   SettingsModel() {
     if (Platform.isWindows) {
-      settingJsonPath = p.join(
-        Platform.environment['APPDATA']!,
-        'Zed',
-        'settings.json',
-      );
+      settingFolderPath = p.join(Platform.environment['APPDATA']!, 'Zed');
+      settingJsonPath = p.join(settingFolderPath, 'settings.json');
     } else {
-      settingJsonPath = p.join(
+      settingFolderPath = p.join(
         Platform.environment['HOME']!,
         '.config',
         'zed',
-        'settings.json',
       );
+      settingJsonPath = p.join(settingFolderPath, 'settings.json');
     }
   }
 }

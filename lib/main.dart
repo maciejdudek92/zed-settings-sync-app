@@ -49,7 +49,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
   await configureServices();
-  await trayManager.setIcon('');
   await trayManager.setIcon(
     Platform.isWindows
         ? 'assets/icons/tray_icon.ico'
@@ -85,9 +84,9 @@ void main() async {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    windowManager.hide();
     return MaterialApp(
       title: 'Flutter Demo',
       // theme: ThemeData(colorScheme: .fromSeed(seedColor: Colors.transparent)),
@@ -132,12 +131,6 @@ class _MyHomePageState extends State<MyHomePage>
         isRunAtStartuEnable = value;
       });
     });
-
-    if (locator<WatcherService>().isInitialized) {
-      _watcherStream = locator<WatcherService>().watcher.listen((event) {
-        print(event);
-      });
-    }
 
     super.initState();
   }
@@ -229,28 +222,43 @@ class _MyHomePageState extends State<MyHomePage>
               maxLines: 1,
             ),
             SizedBox(height: 16),
-            FTextField(
-              control: FTextFieldControl.managed(
-                controller: _settingsJsonPathController,
-              ),
-              style: (style) => style.copyWith(),
-              label: const Text('Zed Settings File Path'),
-              hint: Platform.isWindows
-                  ? "C:\\Users\\User\\AppData\\Roaming\\Zed\\settings.json"
-                  : '~/.config/zed/settings.json',
-              textCapitalization: TextCapitalization.none,
-              enabled: true,
-              maxLines: 1,
-              onTap: () async {
-                FilePickerResult? result = await FilePicker.platform.pickFiles(
-                  initialDirectory: locator<DatabaseService>()
-                      .getSettings()
-                      .settingJsonPath,
-                  type: FileType.custom,
-                  allowedExtensions: ['json'],
-                );
-                _settingsJsonPathController.text = result?.files[0].path ?? '';
-              },
+            Row(
+              crossAxisAlignment: .end,
+              children: [
+                Flexible(
+                  child: FTextField(
+                    control: FTextFieldControl.managed(
+                      controller: _settingsJsonPathController,
+                    ),
+                    style: (style) => style.copyWith(),
+                    label: const Text('Zed Settings File Path'),
+                    hint: Platform.isWindows
+                        ? "C:\\Users\\User\\AppData\\Roaming\\Zed\\settings.json"
+                        : '~/.config/zed/settings.json',
+                    textCapitalization: TextCapitalization.none,
+                    enabled: true,
+                    readOnly: true,
+                    maxLines: 1,
+                  ),
+                ),
+                SizedBox(width: 8),
+                FButton.icon(
+                  child: const Icon(FIcons.folderOpen, size: 22),
+                  onPress: () async {
+                    FilePickerResult? result = await FilePicker.platform
+                        .pickFiles(
+                          initialDirectory: locator<DatabaseService>()
+                              .getSettings()
+                              .settingJsonPath,
+                          type: FileType.custom,
+                          allowedExtensions: ['json'],
+                        );
+                    if (result?.files[0].path != null) {
+                      _settingsJsonPathController.text = result!.files[0].path!;
+                    }
+                  },
+                ),
+              ],
             ),
             SizedBox(height: 16),
             FCheckbox(
@@ -316,23 +324,26 @@ class _MyHomePageState extends State<MyHomePage>
               style: FButtonStyle.primary(),
               prefix: Icon(
                 locator<WatcherService>().isInitialized
-                    ? FIcons.play
-                    : FIcons.pause,
+                    ? FIcons.pause
+                    : FIcons.play,
               ),
 
               mainAxisSize: MainAxisSize.max,
-              onPress: locator<WatcherService>().isInitialized
-                  ? null
-                  : () async {
-                      setState(() {
-                        locator<WatcherService>().initialize();
-                        _watcherStream = _watcherStream =
-                            locator<WatcherService>().watcher.listen((event) {
-                              print(event);
-                            });
-                      });
-                    },
-              child: const Text('Start watcher'),
+              onPress: () async {
+                setState(() {
+                  final watcher = locator<WatcherService>();
+                  if (watcher.isInitialized) {
+                    watcher.stop();
+                  } else {
+                    watcher.start();
+                  }
+                });
+              },
+              child: Text(
+                locator<WatcherService>().isInitialized
+                    ? 'Stop watcher'
+                    : 'Start watcher',
+              ),
             ),
           ],
         ),

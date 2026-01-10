@@ -16,7 +16,6 @@ dependencies:
   window_manager: ^0.5.1
   github: ^9.25.0
   objectbox: ^5.1.0
-  watcher: ^1.2.0
   path_provider: ^2.1.5
   forui: ^0.17.0
   file_picker: ^10.3.8
