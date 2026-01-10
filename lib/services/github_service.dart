@@ -47,6 +47,7 @@ class GithubService {
     _repositoryPath = _settings.settingJsonPath.replaceAll("settings.json", "");
 
     if (Directory(p.join(_repositoryPath!, '.git')).existsSync()) {
+      pull();
       push();
     } else {
       _init();

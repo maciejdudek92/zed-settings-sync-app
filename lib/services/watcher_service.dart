@@ -30,6 +30,7 @@ class WatcherService {
 
   void _handleEvent(FileSystemEvent event) async {
     if (!event.path.contains(".git")) {
+      await locator<GithubService>().pull();
       await locator<GithubService>().push();
     }
   }
